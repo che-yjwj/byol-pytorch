@@ -2,8 +2,6 @@ import torch
 from torchvision import models
 import pytorch_lightning as pl
 
-# from networks import vit
-# from networks import byol_pytorch
 from networks.byol_pytorch import BYOL
 from networks.vit import ViT
 
