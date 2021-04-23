@@ -1,2 +1,2 @@
-from vit_pytorch.vit import ViT
-from byol_pytorch.byol_pytorch import BYOL
+from networks.vit import ViT
+from networks.byol_pytorch import BYOL
