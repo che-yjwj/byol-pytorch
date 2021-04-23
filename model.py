@@ -19,10 +19,10 @@ class LitModel(pl.LightningModule):
                 image_size = args.img_size,
                 patch_size = 4,
                 num_classes = 100,
-                dim = 512,
+                dim = 1024,
                 depth = 6,
                 heads = 8,
-                mlp_dim = 1024
+                mlp_dim = 2048
             )
             hidden_layer = 'to_latent'
 
