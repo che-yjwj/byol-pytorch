@@ -38,11 +38,10 @@ def set_trainer_args(args):
     args.stochastic_weight_avg = True
     args.resume_from_checkpoint = args.resume
 
-    # args.accumulate_grad_batches = 1,
-    args.sync_batchnorm = True,
+    args.accumulate_grad_batches = 1
+    args.sync_batchnorm = True
 
     return args
-
 
 
 def main():
