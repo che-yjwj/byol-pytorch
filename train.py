@@ -1,114 +1,114 @@
-import os
-import argparse
-import multiprocessing
-from pathlib import Path
-from PIL import Image
-
-import torch
-from torchvision import models, transforms
-from torch.utils.data import DataLoader, Dataset
-
-from byol_pytorch import BYOL
+# pip install transformers pytorch-lightning
+from argparse import ArgumentParser
 import pytorch_lightning as pl
+from pytorch_lightning import Trainer
+from pytorch_lightning.loggers import WandbLogger
 
-# test model, a resnet 50
+from model import LitModel
+from datamodule import LitDataModule
 
-resnet = models.resnet50(pretrained=True)
 
-# arguments
+def set_trainer_args(args):
+    if args.freeze:
+        frozen = '1'
+    else:
+        frozen = '0'
 
-parser = argparse.ArgumentParser(description='byol-lightning-test')
+    wname = f'CelebA_{args.vision_model}_f{frozen}_s{args.img_size}_lr{args.lr}'
+    wandb_logger = WandbLogger(project='CLIP', name=wname, offline=False)
+    args.logger = wandb_logger    # W&B integration
 
-parser.add_argument('--image_folder', type=str, default='/workspace/data/cifar/cifar100/train',
-                       help='path to your folder of images for self-supervised learning')
+    args.max_epochs = args.num_epochs
 
-args = parser.parse_args()
+    args.limit_train_batches = 1.0
+    args.limit_val_batches = 1.0
+    args.limit_test_batches = 1.0
 
-# constants
+    args.gpus = -1
+    args.distributed_backend = 'ddp'
+    # args.gpus = 1
 
-BATCH_SIZE = 32
-EPOCHS     = 1000
-LR         = 3e-4
-NUM_GPUS   = 2
-IMAGE_SIZE = 64
-IMAGE_EXTS = ['.jpg', '.png', '.jpeg']
-NUM_WORKERS = multiprocessing.cpu_count()
+    # gradient clip
+    args.gradient_clip_val = 1.0
 
-# pytorch lightning module
+    # mixed precision
+    args.precision = 16
+    args.amp_level ='O2'
 
-class SelfSupervisedLearner(pl.LightningModule):
-    def __init__(self, net, **kwargs):
-        super().__init__()
-        self.learner = BYOL(net, **kwargs)
+    # logging
+    args.show_progress_bar=True
+    args.progress_bar_refresh_rate = 100
 
-    def forward(self, images):
-        return self.learner(images)
+    args.checkpoint_callback = True
+    args.stochastic_weight_avg = True
+    args.resume_from_checkpoint = args.resume
 
-    def training_step(self, images, _):
-        loss = self.forward(images)
-        return {'loss': loss}
+    return args
 
-    def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=LR)
 
-    def on_before_zero_grad(self, _):
-        if self.learner.use_momentum:
-            self.learner.update_moving_average()
 
-# images dataset
+def main():
+    # ------------
+    # args
+    # ------------
+    parser = ArgumentParser()
+    parser.add_argument('--resume', default=None, type=str)
+    parser.add_argument('--data_dir', default='/workspace/data/face/CelebA_HQ_multi_modal/', type=str)
+    parser.add_argument('--text_model', default='distilbert-base-multilingual-cased', type=str)
+    parser.add_argument('--vision_model', default='ms_vision', type=str)
+    parser.add_argument('--freeze', default=False, type=bool)
+    parser.add_argument('--img_size', default=112, type=int)
+    parser.add_argument('--embed_dim', default=512, type=int)
+    parser.add_argument('--transformer_embed_dim', default=768, type=int)
+    parser.add_argument('--max_len', default=32, type=int)
+    parser.add_argument('--batch_size', default=64, type=int)
+    parser.add_argument('--lr', type=float, default=1e-3)  
+    # parser.add_argument('--lr', type=float, default=1e-1)  # Nan
+    # parser.add_argument('--lr', type=float, default=1e-5)  # too low
+    parser.add_argument('--num_epochs', default=200, type=int)
+    parser.add_argument('--milestones', default=[120,150,180], type=int)
+    parser.add_argument('--seed', type=int, default=42)
+    parser = Trainer.add_argparse_args(parser)
+    args = parser.parse_args()
 
-def expand_greyscale(t):
-    return t.expand(3, -1, -1)
+    pl.seed_everything(args.seed)
 
-class ImagesDataset(Dataset):
-    def __init__(self, folder, image_size):
-        super().__init__()
-        self.folder = folder
-        self.paths = []
+    # ------------
+    # setup data
+    # ------------
+    data = LitDataModule(args)
 
-        for path in Path(f'{folder}').glob('**/*'):
-            _, ext = os.path.splitext(path)
-            if ext.lower() in IMAGE_EXTS:
-                self.paths.append(path)
 
-        print(f'{len(self.paths)} images found')
+    # ------------
+    # model
+    # ------------
+    model = LitModel(args)
 
-        self.transform = transforms.Compose([
-            transforms.Resize(image_size),
-            transforms.CenterCrop(image_size),
-            transforms.ToTensor(),
-            transforms.Lambda(expand_greyscale)
-        ])
 
-    def __len__(self):
-        return len(self.paths)
+    # ------------
+    # arguments for trainer
+    # ------------
+    args = set_trainer_args(args)
 
-    def __getitem__(self, index):
-        path = self.paths[index]
-        img = Image.open(path)
-        img = img.convert('RGB')
-        return self.transform(img)
 
-# main
+    # ------------
+    # trainer
+    # ------------
+    trainer = Trainer.from_argparse_args(args)
+
+
+    # ------------
+    # training
+    # ------------
+    trainer.fit(model, data)
+
+
+    # ------------
+    # testing
+    # ------------
+    # result = trainer.test(data)
+
 
 if __name__ == '__main__':
-    ds = ImagesDataset(args.image_folder, IMAGE_SIZE)
-    train_loader = DataLoader(ds, batch_size=BATCH_SIZE, num_workers=NUM_WORKERS, shuffle=True)
+    main()
 
-    model = SelfSupervisedLearner(
-        resnet,
-        image_size = IMAGE_SIZE,
-        hidden_layer = 'avgpool',
-        projection_size = 256,
-        projection_hidden_size = 4096,
-        moving_average_decay = 0.99
-    )
-
-    trainer = pl.Trainer(
-        gpus = NUM_GPUS,
-        max_epochs = EPOCHS,
-        accumulate_grad_batches = 1,
-        sync_batchnorm = True
-    )
-
-    trainer.fit(model, train_loader)
