@@ -54,7 +54,6 @@ def main():
     parser.add_argument('--dataset', default='cifar100', type=str)
     parser.add_argument('--train_data', default='/workspace/data/cifar/cifar100/train', type=str) # unlabeled_data
     parser.add_argument('--val_data', default='/workspace/data/cifar/cifar100/val', type=str) # labeled_data
-    parser.add_argument('--val_classes', default=100, type=int)
     parser.add_argument('--network', default='resnet', type=str)
     parser.add_argument('--img_size', default=32, type=int)
     parser.add_argument('--batch_size', default=32, type=int)

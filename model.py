@@ -17,7 +17,6 @@ class LitModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.lr = args.lr
-        num_classes = args.val_classes
 
 
         if args.network == 'vit':
