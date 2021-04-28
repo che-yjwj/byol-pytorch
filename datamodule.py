@@ -9,39 +9,6 @@ from pathlib import Path
 from PIL import Image
 import glob
 
-# IMAGE_EXTS = ['.jpg', '.png', '.jpeg']
-
-# def expand_greyscale(t):
-#     return t.expand(3, -1, -1)
-
-# class PtDataModule(Dataset):
-#     def __init__(self, folder, image_size):
-#         super().__init__()
-#         self.folder = folder
-#         self.paths = []
-
-#         for path in Path(f'{folder}').glob('**/*'):
-#             _, ext = os.path.splitext(path)
-#             if ext.lower() in IMAGE_EXTS:
-#                 self.paths.append(path)
-
-#         print(f'{len(self.paths)} images found')
-
-#         self.transform = transforms.Compose([
-#             transforms.Resize(image_size),
-#             transforms.CenterCrop(image_size),
-#             transforms.ToTensor(),
-#             transforms.Lambda(expand_greyscale)
-#         ])
-
-#     def __len__(self):
-#         return len(self.paths)
-
-#     def __getitem__(self, index):
-#         path = self.paths[index]
-#         img = Image.open(path)
-#         img = img.convert('RGB')
-#         return self.transform(img)
 
 class ConcatDataset(Dataset):
     def __init__(self, *datasets):

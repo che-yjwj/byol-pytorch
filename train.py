@@ -40,7 +40,6 @@ def set_trainer_args(args):
 
     args.accumulate_grad_batches = 1
     args.sync_batchnorm = True
-
     args.num_sanity_val_steps = 0
 
     return args

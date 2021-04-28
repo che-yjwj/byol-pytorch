@@ -10,8 +10,8 @@ from networks.vit import ViT
 
 from sklearn.linear_model import LogisticRegression
 
-# pytorch lightning module
 
+# pytorch lightning module
 class LitModel(pl.LightningModule):
     def __init__(self, args):
         super().__init__()
