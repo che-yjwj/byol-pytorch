@@ -11,6 +11,22 @@ from networks.vit import ViT
 from sklearn.linear_model import LogisticRegression
 
 
+def eval_logistic_regression(embeddings, labels, eval_classifier, limit_ratio):
+    indices = np.arange(embeddings.shape[0])
+    np.random.shuffle(indices)
+    limit_len = int(embeddings.shape[0] * limit_ratio)
+    indices = indices[:limit_len]
+    embeddings = embeddings[indices]
+    labels = labels[indices]
+
+    num_split_linear = embeddings.shape[0] // 2
+    eval_classifier.fit(embeddings[:num_split_linear], labels[:num_split_linear])
+    train_accuracy = eval_classifier.score(embeddings[:num_split_linear], labels[:num_split_linear])
+    val_accuracy = eval_classifier.score(embeddings[num_split_linear:], labels[num_split_linear:])
+    
+    return train_accuracy, val_accuracy
+
+
 # pytorch lightning module
 class LitModel(pl.LightningModule):
     def __init__(self, args):
@@ -75,10 +91,8 @@ class LitModel(pl.LightningModule):
     def validation_epoch_end(self, outputs):
         embeddings = torch.cat([x["emb"] for x in outputs]).cpu().detach().numpy()
         labels = torch.cat([x["labels"] for x in outputs]).cpu().detach().numpy()
-        num_split_linear = embeddings.shape[0] // 2
-        self.eval_classifier.fit(embeddings[:num_split_linear], labels[:num_split_linear])
-        train_accuracy = self.eval_classifier.score(embeddings[:num_split_linear], labels[:num_split_linear])
-        val_accuracy = self.eval_classifier.score(embeddings[num_split_linear:], labels[num_split_linear:])
+
+        train_accuracy, val_accuracy = eval_logistic_regression(embeddings, labels, self.eval_classifier, 0.25)
 
         print(f"Epoch {self.current_epoch} accuracy: train: {train_accuracy:.3f}%, validation: {val_accuracy:.3f}%")
         self.log('logistic_regression_train_acc', train_accuracy)
