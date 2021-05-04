@@ -61,7 +61,8 @@ class LitModel(pl.LightningModule):
             hidden_layer = hidden_layer,
             projection_size = 256,
             projection_hidden_size = 2048,
-            moving_average_decay = 0.99
+            moving_average_decay = 0.99,
+            use_momentum = args.use_momentum
         )
 
         # this classifier is used to compute representation quality each epoch

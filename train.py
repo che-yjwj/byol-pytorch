@@ -9,7 +9,12 @@ from model import LitModel
 
 
 def set_trainer_args(args):
-    wname = f'{args.dataset}_{args.network}_s{args.img_size}_lr{args.lr}_b{args.batch_size}'
+    if args.use_momentum:
+        framework = 'byol'
+    else:
+        framework = 'simsiam'
+
+    wname = f'{args.dataset}_{framework}_{args.network}_s{args.img_size}_lr{args.lr}_b{args.batch_size}'
     wandb_logger = WandbLogger(project='BYOL', name=wname, offline=False)
     args.logger = wandb_logger    # W&B integration
 
@@ -55,6 +60,7 @@ def main():
     parser.add_argument('--train_data', default='/workspace/data/cifar/cifar100/train', type=str) # unlabeled_data
     parser.add_argument('--val_data', default='/workspace/data/cifar/cifar100/val', type=str) # labeled_data
     parser.add_argument('--network', default='resnet', type=str)
+    parser.add_argument('--use_momentum', default=False, type=bool)
     parser.add_argument('--img_size', default=32, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--lr', type=float, default=3e-4)  
